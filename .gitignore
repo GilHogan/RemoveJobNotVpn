@@ -1,0 +1,26 @@
+# Build outputs
+build/
+app/build/
+.gradle/
+*.apk
+*.idsig
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Local configuration
+local.properties
+
+# Keystore files
+*.jks
+*.keystore
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db

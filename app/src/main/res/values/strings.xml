@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RemoveJobNotVpn</string>
+    <string name="xposed_description">Remove NET_CAPABILITY_NOT_VPN restriction from JobScheduler tasks</string>
+    <string-array name="xposed_scope">
+        <item>com.google.android.gm</item>
+        <item>com.google.android.gms</item>
+    </string-array>
+</resources>
