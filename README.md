@@ -51,6 +51,39 @@ dumpsys jobscheduler | grep -B 10 -A 6 "u0a353/555"
 
 可以看到 `#GnpWorker#` 的 `NetworkRequest` 中已不再包含 `NOT_VPN`，且任务能够通过 VPN 正常执行并获取 `RTID`。
 
+## 附：直接通过 ADB 命令恢复 Gmail 推送（免安装模块 / 应急触发）
+
+如果你暂时不想安装模块，或者想在开启 VPN（代理）的状态下**立即触发 Gmail 向 Google 服务器注册 `RTID` 并恢复实时推送**，可以直接通过 `adb shell` 强制运行 Gmail 被挂起的 `JobScheduler` 任务（`-f` 参数表示强制忽略 `NOT_VPN` 等未满足的约束条件）：
+
+### 1. 查询并执行单条命令
+
+Gmail 内置的 `WorkManager` 任务 ID 固定以 **`555000`** 开头（从 `555000000` 起自增，不同手机或不同安装周期末尾数字会有所差异，例如 `555000026`）：
+
+```bash
+# 第一步：查询当前手机上 Gmail 挂起的 GnpWorker 任务 ID
+adb shell "dumpsys jobscheduler | grep -B 4 'GnpWorker'"
+
+# 输出示例（其中 555000026 即为当前手机上的 Job ID）：
+#   JOB #u0a353/555000026: 9d0a1b2 com.google.android.gm/androidx.work.impl.background.systemjob.SystemJobService
+#     u0a353 tag=*job*/com.google.android.gm/androidx.work.systemjobscheduler#GnpWorker#
+
+# 第二步：强制执行该 Job（将末尾的 555000026 替换为你实际查出的 ID）
+adb shell "cmd jobscheduler run -f -n androidx.work.systemjobscheduler com.google.android.gm 555000026"
+```
+
+### 2. 跨手机通用的全自动一行命令（推荐）
+
+无需手动查询 ID，下面这条命令会自动提取当前手机上 Gmail 所有 `555` 开头的 `WorkManager` 任务并全部强制执行一次：
+
+```bash
+adb shell "for id in $(dumpsys jobscheduler | grep -oE 'u0a[0-9]+/555[0-9]+' | cut -d/ -f2 | sort -u); do echo Running Job $id; cmd jobscheduler run -f -n androidx.work.systemjobscheduler com.google.android.gm $id; done"
+```
+
+> **关于通用性与持久性的说明**：
+> - **是否所有手机通用**：`cmd jobscheduler run -f -n androidx.work.systemjobscheduler com.google.android.gm <JobID>` 在所有 Android 11+ 手机上均通用；如果设备的 `WorkManager` 未启用命名空间（部分旧版本系统），去掉 `-n androidx.work.systemjobscheduler` 即可：
+>   `cmd jobscheduler run -f com.google.android.gm <JobID>`
+> - **效果持久性**：只要在挂着代理的状态下通过上述命令成功跑通一次 `#GnpWorker#`，Gmail 就会将获取到的 `RTID` 持久化保存在本地数据库中，此后很长一段时间内 FCM 实时邮件推送都会恢复正常。但当 Gmail 清除数据、重装升级或定期轮换注册 Token 时，仍会重新创建带 `NOT_VPN` 的后台任务，因此长期使用建议配合本 LSPosed 模块一劳永逸地移除 `NOT_VPN` 限制。
+
 ## 编译构建
 
 ### 方式一：使用 PowerShell 快速构建脚本（无需下载完整 Gradle）
